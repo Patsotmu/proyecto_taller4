@@ -5,11 +5,10 @@ export async function GET() {
   try {
     const TOP_LIMIT = 10;
     
-    // 1. Llamar a la función que lee el Top N de la hoja
-    // Esta función está definida en lib/googleSheets.js
+    //Llama a la función que lee el Top N de la hoja
     const topDomains = await getTopDomains(TOP_LIMIT);
 
-    // 2. Responder al cliente con los datos en formato JSON
+    // Responde al cliente con los datos en formato JSON
     // El frontend recibirá { success: true, data: [...] }
     return NextResponse.json({ 
       success: true, 
