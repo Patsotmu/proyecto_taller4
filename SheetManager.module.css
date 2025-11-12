@@ -1,0 +1,260 @@
+:root {
+  --color-primary: #0070f3;
+  --color-danger: #e53e3e;
+  --color-text: #333;
+  --color-background: #fff;
+  --color-light-gray: #f4f4f4;
+  --color-medium-gray: #ddd;
+  --color-dark-gray: #555;
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --border-radius: 8px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+.title {
+  color: var(--color-dark-gray);
+  margin-bottom: 16px;
+  font-size: 2em; 
+  font-weight: bold;
+}
+
+.subtitle {
+  color: var(--color-dark-gray);
+  margin-bottom: 16px;
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+.tabContainer {
+  display: flex;
+  border-bottom: 2px solid var(--color-light-gray);
+  margin-bottom: 24px;
+}
+
+.tabButton {
+  background: none;
+  border: none;
+  padding: 12px 18px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-dark-gray);
+  border-bottom: 2px solid transparent;
+  transform: translateY(2px);
+}
+
+.tabButton:hover {
+  color: var(--color-primary);
+}
+
+.activeTab {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.form {
+  background: var(--color-light-gray);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-sm);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup label {
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.input {
+  padding: 10px;
+  border: 1px solid var(--color-medium-gray);
+  border-radius: 5px;
+  font-size: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
+}
+
+.formActions {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.buttonBase {
+  border: none;
+  border-radius: 5px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.buttonPrimary {
+  composes: buttonBase;
+  background-color: var(--color-primary);
+  color: white;
+}
+.buttonPrimary:hover {
+  opacity: 0.9;
+}
+
+.buttonSecondary {
+  composes: buttonBase;
+  background-color: #e2e8f0;
+  color: var(--color-text);
+}
+.buttonSecondary:hover {
+  background-color: #cbd5e0;
+}
+
+.buttonDanger {
+  composes: buttonBase;
+  background-color: var(--color-danger);
+  color: white;
+}
+.buttonDanger:hover {
+  opacity: 0.9;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.table th, .table td {
+  padding: 14px;
+  border: 1px solid var(--color-medium-gray);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  background-color: var(--color-light-gray);
+  font-size: 14px;
+  text-transform: uppercase;
+  color: var(--color-dark-gray);
+}
+
+.table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.table tbody tr:hover {
+  background-color: #f0f4ff;
+}
+
+.actionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.jsonPre {
+  background: #2d2d2d;
+  color: #f1f1f1;
+  padding: 20px;
+  border-radius: var(--border-radius);
+  overflow-x: auto;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 40px;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.error {
+  color: var(--color-danger);
+  background: rgba(229, 62, 62, 0.1);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--border-radius);
+}
+
+.addColumnForm {
+  background-color: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.addColumnForm .formGroup {
+  width: 100%;
+  max-width: 400px;
+}
+
+.headerCell {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerDeleteButton {
+  background: none;
+  border: none;
+  color: var(--color-danger);
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  border-radius: 4px;
+  opacity: 0.7;
+}
+
+.headerDeleteButton:hover {
+  background-color: rgba(229, 62, 62, 0.1);
+  opacity: 1;
+}
+
+.buttonPrimary:disabled,
+.buttonSecondary:disabled,
+.buttonDanger:disabled,
+.headerDeleteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-image: none;
+}
+
+.input:disabled {
+  background-color: #f1f1f1;
+  cursor: not-allowed;
+}
