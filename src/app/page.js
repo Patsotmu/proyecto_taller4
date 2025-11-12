@@ -1,5 +1,16 @@
 'use client';
 import { useState } from 'react';
+import styles from './SheetManager.module.css';
+
+type RowData = {
+  rowIndex: number;
+  [key: string]: any;
+};
+
+type SheetData = {
+  headers: string[];
+  data: RowData[];
+};
 
 export default function Home() {
     const [texto, setTexto] = useState('');
@@ -7,12 +18,53 @@ export default function Home() {
     const [mostrarResultado, setMostrarResultado] = useState(false); 
     const [esSeguro, setEsSeguro] = useState(true);
     const [opcionSeleccionada, setOpcionSeleccionada] = useState(null);
-    
+
+    //Con respecto a sheets
+    const [sheetData, setSheetData] = useState<SheetData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [view, setView] = useState<'table' | 'json'>('table');
+    const [formData, setFormData] = useState<Record<string, string>>({});
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+    const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/sheets');
+      if (!res.ok) {
+        const errorResult = await res.json();
+        throw new Error(errorResult.details || `API error: ${res.statusText}`);
+      }
+      const result = await res.json();
+      setSheetData(result);
+      
+      if (result.headers) {
+        const initialForm = result.headers.reduce((acc: Record<string, string>, header: string) => {
+          acc[header] = '';
+          return acc;
+        }, {});
+        setFormData(initialForm);
+      }
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+
+
     const menuItemStyle = {
       marginBottom: '1rem',
       cursor: 'pointer',
       fontSize: '1.5rem',
     };
+
+
 
     
     const handleMenuClick = (opcion) => {
@@ -25,11 +77,11 @@ export default function Home() {
       { key: 'contact', label: 'Contacto', content: "Puedes contactarnos en domainsecurity@gmail.com o llamando al +569 12345678." },
       { 
         key: 'risky_pages',
-        label: 'Páginas peligrosas', 
+        label: 'Páginas mas buscadas', 
         content: [
-          {name: 'nombre1', href: 'link1'},
-          {name: 'nombre2', href: 'link2'},
-          {name: 'nombre3', href: 'link3'}
+          {name: sheetData.data[0][0]},
+          {name: sheetData.data[1][0]},
+          {name: sheetData.data[2][0]}
         ]
       }
     ];
