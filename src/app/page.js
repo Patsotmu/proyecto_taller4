@@ -14,24 +14,6 @@ export default function Home() {
       fontSize: '1.5rem',
     };
 
-
-    // Tu componente de React (lado del cliente)
-    async function handleSearchAndTrack(domain, securityLevel) {
-    // ... después de obtener securityLevel de la API externa ...
-    
-    const response = await fetch('src\app/api/track-domain', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json', // <--- Indica que el cuerpo es JSON
-        },
-        body: JSON.stringify({ // <--- Los datos se empaquetan aquí
-            domain: domain,
-            securityLevel: securityLevel
-        }), 
-    });
-    const data = await response.json();
-    console.log('Respuesta de track-domain:', data);
-}
     
     const handleMenuClick = (opcion) => {
       setOpcionSeleccionada(opcion);
