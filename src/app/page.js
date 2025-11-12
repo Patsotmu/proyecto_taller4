@@ -7,31 +7,13 @@ export default function Home() {
     const [mostrarResultado, setMostrarResultado] = useState(false); 
     const [esSeguro, setEsSeguro] = useState(true);
     const [opcionSeleccionada, setOpcionSeleccionada] = useState(null);
+    const [modalActivo, setModalActivo] = useState(null);
     
     const menuItemStyle = {
       marginBottom: '1rem',
       cursor: 'pointer',
       fontSize: '1.5rem',
-    };
-
-
-    // Tu componente de React (lado del cliente)
-    async function handleSearchAndTrack(domain, securityLevel) {
-    // ... después de obtener securityLevel de la API externa ...
-    
-    const response = await fetch('src\app/api/track-domain', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json', // <--- Indica que el cuerpo es JSON
-        },
-        body: JSON.stringify({ // <--- Los datos se empaquetan aquí
-            domain: domain,
-            securityLevel: securityLevel
-        }), 
-    });
-    const data = await response.json();
-    console.log('Respuesta de track-domain:', data);
-}
+    }
     
     const handleMenuClick = (opcion) => {
       setOpcionSeleccionada(opcion);
@@ -88,7 +70,7 @@ export default function Home() {
                     Domain Security
                 </div>
 
-                {/* Botón de menu */}
+                {/* Boton de menu */}
                 <button
                     onClick={() => setMenuAbierto(!menuAbierto)}
                     aria-label="Abrir menú"
@@ -234,7 +216,7 @@ export default function Home() {
                     //transition: 'all 0.5s ease', 
                 }}
             >
-                {/* Contenedor de Input y Botón */}
+                {/* Contenedor de Input y Boton */}
                 <div style=
                   {{ 
                     display: 'flex', 
@@ -341,8 +323,9 @@ export default function Home() {
                             <span style={{ marginLeft: '10px' }}>{esSeguro ? '✅' : '⚠️'}</span> 
                         </button>
 
-                        {/* Botón de Resumen */}
-                        <button style=
+                        {/* Boton de Resumen */}
+                        <button onClick={() => setModalActivo('resumen')}
+                        style=
                           {{
                             backgroundColor: 'white',
                             color: 'black',
@@ -364,7 +347,8 @@ export default function Home() {
                         </button>
                         
                         {/* Boton de Mas Informacion */}
-                        <button style=
+                        <button onClick={() => setModalActivo('tecnica')}
+                        style=
                           {{
                             backgroundColor: 'white',
                             color: 'black',
@@ -387,6 +371,71 @@ export default function Home() {
                     </div>
                 )}
             </main>
+
+            {modalActivo && (
+              <div
+                style={{
+                  //Fondo oscuro semitransparente
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100vw',
+                  height: '100vh',
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  zIndex: 50,
+                }}
+              >
+                {/* Ventana blanca del modal */}
+                <div 
+                  style={{
+                    backgroundColor: 'white',
+                    color: 'black',
+                    padding: '2rem',
+                    borderRadius: '8px',
+                    width: '500px',
+                    maxWidth: '90%',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                    zIndex: 51,
+                  }}
+                >
+
+                  {/* Contenido dinamico del modal */}
+                  {modalActivo === 'resumen' && (
+                    <div>
+                      <h3 style={{ marginTop: 0, fontSize: '1.5rem'}}>Resumen</h3>
+                      <p>Aqui va el resumen de la info</p>
+                    </div>
+                  )}
+
+                  {modalActivo === 'tecnica' && (
+                    <div>
+                      <h3 style={{ marginTop: 0, fontSize: '1.5rem'}}>Info tecnica</h3>
+                      <p>Aqui va la info tecnica</p>
+                    </div>
+                  )}
+
+                  {/* Boton para cerrar el modal */}
+                  <button
+                    onClick={() => setModalActivo(null)}
+                    style={{
+                      backgroundColor: '#13296B',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      marginTop: '1rem',
+                      float: 'right',
+                    }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
         </div>
     );
 }
