@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 function jsonResponse(obj, status = 200) {
   return new Response(JSON.stringify(obj, null, 2), {
     status,
@@ -5,281 +7,220 @@ function jsonResponse(obj, status = 200) {
   });
 }
 
+
+
+function reducirJson(obj) {
+  return JSON.parse(
+    JSON.stringify(obj, (key, value) => {
+      if (Array.isArray(value) && value.length > 50) return "[TRUNCADO]";
+      if (typeof value === "string" && value.length > 500) return value.slice(0, 500) + "…";
+      return value;
+    })
+  );
+}
+
+
+
 function extractDomain(url) {
   try {
-    const u = new URL(url);
-    return u.hostname.replace(/^www\./i, "");
-  } catch (e) {
-    return url;
+    return new URL(url).hostname;
+  } catch {
+    return null;
   }
 }
 
-export async function POST(request) {
-  const GOOGLE_API_KEY = "AIzaSyAaK3IKV2zx2nM0Ky3u_h3zHLbb8LNAIP0";
-  const VT_API_KEY = "6ebf41befc4267204993a88816b751d4cac169b9677ed4681be1a0cdd8895628";
-  const WHOISXML_API_KEY = "at_oO503Ns2uR6pb9tVJCJXov6ywOCuG"; /*No se usa aun investigar mas adelante*/
-  const URLSCAN_API_KEY = "019a547f-73af-739d-adb0-fd1588939732";
-  const IPREPUTATION_API_KEY = "4c92204c1b43c5631387b3a6862cf30c92c834bebb9e970bc07d81f5404b6138001c65cfc3cb75c1";
 
+
+//google
+async function checkGoogle(url) {
   try {
-    const body = await request.json();
-    const url = body?.url;
-    if (!url) return jsonResponse({ error: "Debes enviar { url: 'https://...' }" }, 400);
+    const apiKey = process.env.GOOGLE_SAFE_BROWSING_KEY;
+    const body = {
+      client: { clientId: "multiCheck", clientVersion: "1.0" },
+      threatInfo: {
+        threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
+        platformTypes: ["ANY_PLATFORM"],
+        threatEntryTypes: ["URL"],
+        threatEntries: [{ url }],
+      },
+    };
+
+    const res = await fetch(
+      `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    const data = await res.json();
+
+    return {
+      flag: data.matches ? "F" : "V",
+      message: data.matches ? "Google Safe Browsing detectó amenaza" : "Sin amenazas detectadas",
+      raw: reducirJson(data),
+    };
+  } catch (err) {
+    return { flag: "N", message: "Error en Google Safe Browsing", raw: String(err) };
+  }
+}
+
+
+
+//VT
+async function checkVirusTotal(url) {
+  try {
+    const apiKey = process.env.VIRUSTOTAL_KEY;
+    const id = encodeURIComponent(url);
+    const res = await fetch(`https://www.virustotal.com/api/v3/urls/${id}`, {
+      headers: { "x-apikey": apiKey },
+    });
+
+    const data = await res.json();
+
+    const malicious = data?.data?.attributes?.last_analysis_stats?.malicious ?? 0;
+
+    return {
+      flag: malicious > 0 ? "F" : "V",
+      message: malicious > 0 ? "VirusTotal reportó detecciones" : "Sin detecciones",
+      raw: reducirJson(data),
+    };
+  } catch (err) {
+    return { flag: "N", message: "Error en VirusTotal", raw: String(err) };
+  }
+}
+
+
+
+//WHOIS
+async function checkWhois(domain) {
+  try {
+    const apiKey = process.env.WHOISXML_KEY;
+
+    const res = await fetch(
+      `https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=${apiKey}&domainName=${domain}&outputFormat=JSON`
+    );
+
+    const data = await res.json();
+
+    return {
+      flag: "V",
+      message: "WHOIS consultado",
+      raw: reducirJson(data),
+    };
+  } catch {
+    return { flag: "N", message: "Error en WHOIS", raw: "" };
+  }
+}
+
+
+//URL
+async function checkUrlScan(url) {
+  try {
+    const apiKey = process.env.URLSCAN_KEY;
+
+    const res = await fetch(`https://urlscan.io/api/v1/scan/`, {
+      method: "POST",
+      headers: { "API-Key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url, visibility: "private" }),
+    });
+
+    const data = await res.json();
+
+    return {
+      flag: data?.message?.includes("Submission successful") ? "V" : "N",
+      message: data?.message || "Respuesta recibida",
+      raw: reducirJson(data),
+    };
+  } catch (err) {
+    return { flag: "N", message: "Error en URLScan", raw: String(err) };
+  }
+}
+
+
+
+
+//IP
+async function checkIP(ip) {
+  try {
+    const apiKey = process.env.IPQUALITY_KEY;
+
+    const res = await fetch(
+      `https://ipqualityscore.com/api/json/ip/${apiKey}/${ip}`
+    );
+
+    const data = await res.json();
+
+    const fraudScore = data.fraud_score ?? 0;
+
+    return {
+      flag: fraudScore > 50 ? "F" : "V",
+      message: fraudScore > 50 ? "IP riesgosa" : "IP limpia",
+      raw: reducirJson(data),
+    };
+  } catch (err) {
+    return { flag: "N", message: "Error verificando IP", raw: String(err) };
+  }
+}
+
+
+
+//Alien-Domain
+async function checkOTX(domain) {
+  try {
+    const apiKey = process.env.OTX_KEY;
+    const res = await fetch(`https://otx.alienvault.com/api/v1/indicators/domain/${domain}/general`, {
+      headers: { "X-OTX-API-KEY": apiKey },
+    });
+
+    const data = await res.json();
+
+    const pulses = data?.pulse_info?.count ?? 0;
+
+    return {
+      flag: pulses > 0 ? "F" : "V",
+      message: pulses > 0 ? "Dominio en pulses de OTX" : "Sin registros peligrosos",
+      raw: reducirJson(data),
+    };
+  } catch (err) {
+    return { flag: "N", message: "Error en OTX", raw: String(err) };
+  }
+}
+
+
+
+
+export async function POST(req) {
+  try {
+    const { url } = await req.json();
+    if (!url) return jsonResponse({ error: "Falta URL" }, 400);
 
     const domain = extractDomain(url);
-    const results = {};
-    let nivel = 0;
+    const ip = domain;
 
-    /* GOOGLE SAFE BROWSING */
-    async function googleCheck(urlToCheck) {
-      try {
-        const apiUrl = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${GOOGLE_API_KEY}`;
-        const body = {
-          client: { clientId: "multi-check-app", clientVersion: "1.0" },
-          threatInfo: {
-            threatTypes: ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"],
-            platformTypes: ["ANY_PLATFORM"],
-            threatEntryTypes: ["URL"],
-            threatEntries: [{ url: urlToCheck }],
-          },
-        };
-        const res = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        const unsafe = Boolean(data && data.matches && data.matches.length);
-        return {
-          flag: unsafe ? "F" : "V",
-          message: unsafe ? "Detectado por Google Safe Browsing" : "Seguro según Google Safe Browsing",
-          raw: data,
-        };
-      } catch (err) {
-        return { flag: "N", message: `Error Google: ${err.message}`, raw: null };
-      }
-    }
-
-    /* VIRUS TOTAL */
-    async function virusTotalCheck(urlToCheck) {
-      try {
-        const form = new URLSearchParams();
-        form.append("url", urlToCheck);
-        const postRes = await fetch("https://www.virustotal.com/api/v3/urls", {
-          method: "POST",
-          headers: {
-            "x-apikey": VT_API_KEY,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: form.toString(),
-        });
-        const postData = await postRes.json();
-        if (!postData?.data?.id)
-          return { flag: "N", message: "Error en envío a VirusTotal", raw: postData };
-
-        const analysisId = postData.data.id;
-        const getRes = await fetch(`https://www.virustotal.com/api/v3/analyses/${analysisId}`, {
-          headers: { "x-apikey": VT_API_KEY },
-        });
-        const getData = await getRes.json();
-        const stats = getData.data?.attributes?.stats;
-        const malicious = stats?.malicious > 0;
-        return {
-          flag: malicious ? "F" : "V",
-          message: malicious ? "VirusTotal detectó amenazas" : "VirusTotal no detecta amenazas",
-          raw: getData,
-        };
-      } catch (err) {
-        return { flag: "N", message: `Error VirusTotal: ${err.message}`, raw: null };
-      }
-    }
-
-    /* SSL LABS */
-    async function sslLabsCheck(domainToCheck) {
-      try {
-        const apiUrl = `https://api.ssllabs.com/api/v3/analyze?host=${encodeURIComponent(domainToCheck)}&publish=false&all=done`;
-        const start = Date.now();
-        while (true) {
-          const res = await fetch(apiUrl);
-          const data = await res.json();
-          if (data.status === "READY") {
-            const endpoints = data.endpoints || [];
-            const grades = endpoints.map(e => e.grade || "N/A");
-            /*Si todas mayor a B es "Segura"
-            Recalcar SEGURA ya que esta Api no evalua tanto seguridad*/
-            const anyBad = endpoints.some(e => !e.grade || e.grade <= "B");
-            return {
-              flag: anyBad ? "F" : "V",
-              message: `SSL Labs: ${grades.join(", ")}`,
-              raw: data,
-            };
-          } else if (data.status === "ERROR") {
-            return { flag: "N", message: "SSL Labs error", raw: data };
-          }
-          if (Date.now() - start > 60000)
-            return { flag: "N", message: "Timeout SSL Labs", raw: null };
-          await new Promise(r => setTimeout(r, 3000));
-        }
-      } catch (err) {
-        return { flag: "N", message: `Error SSL Labs: ${err.message}`, raw: null };
-      }
-    }
-
-    /* WHOIS / RDAP */
-    async function whoisCheck(domainToCheck) {
-      try {
-        const res = await fetch(`https://rdap.org/domain/${encodeURIComponent(domainToCheck)}`);
-        if (res.status === 404)
-          return { flag: "N", message: "Dominio no encontrado (RDAP)", raw: null };
-        const data = await res.json();
-        const registered = Array.isArray(data.entities);
-        return {
-          flag: registered ? "V" : "N",
-          message: registered ? "Dominio registrado según RDAP" : "Sin registro RDAP",
-          raw: data,
-        };
-      } catch (err) {
-        return { flag: "N", message: `Error WHOIS: ${err.message}`, raw: null };
-      }
-    }
-
-    /* URLSCAN.IO */
-    async function urlscanCheck(domainToCheck) {
-      try {
-        const res = await fetch("https://urlscan.io/api/v1/scan/", {
-          method: "POST",
-          headers: {
-            "API-Key": URLSCAN_API_KEY,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ url: domainToCheck }),
-        });
-        const data = await res.json();
-        if (!data.uuid)
-          return { flag: "N", message: "Error en URLScan.io", raw: data };
-
-        const uuid = data.uuid;
-        let result = null;
-        const start = Date.now();
-        while (!result) {
-          const r = await fetch(`https://urlscan.io/api/v1/result/${uuid}/`);
-          if (r.status === 200) {
-            result = await r.json();
-            break;
-          }
-          if (Date.now() - start > 20000)
-            return { flag: "N", message: "Timeout esperando resultado URLScan", raw: null };
-          await new Promise(r => setTimeout(r, 2000));
-        }
-
-        const malicious = result.verdicts?.overall?.malicious || false;
-        const score = result.verdicts?.overall?.score || 0;
-
-        return {
-          flag: malicious ? "F" : "V",
-          message: malicious
-            ? `URLScan detectó comportamiento sospechoso (score: ${score})`
-            : "Seguro según URLScan.io",
-          raw: result,
-        };
-      } catch (err) {
-        return { flag: "N", message: `Error URLScan: ${err.message}`, raw: null };
-      }
-    }
-
-    /* IP REPUTATION */
-    async function ipReputationCheck(urlToCheck) {
-      try {
-        const res = await fetch(
-          `https://ipqualityscore.com/api/json/url/${IPREPUTATION_API_KEY}/${encodeURIComponent(urlToCheck)}`
-        );
-        const data = await res.json();
-        const unsafe = data?.unsafe === true;
-        return {
-          flag: unsafe ? "F" : "V",
-          message: unsafe ? "IPReputation marcó como peligroso" : "Seguro según IPReputation",
-          raw: data,
-        };
-      } catch (err) {
-        return { flag: "N", message: `Error IPReputation: ${err.message}`, raw: null };
-      }
-    }
-
-    /* ALIEN VAULT OTX */
-    async function alienvaultCheck(domainToCheck) {
-      try {
-        const res = await fetch(
-          `https://otx.alienvault.com/api/v1/indicators/domain/${encodeURIComponent(domainToCheck)}/general`
-        );
-        if (res.status === 404)
-          return { flag: "N", message: "Sin datos en OTX", raw: null };
-        const data = await res.json();
-        const pulses = data?.pulse_info?.count || 0;
-        const unsafe = pulses > 0;
-        return {
-          flag: unsafe ? "F" : "V",
-          message: `AlienVault OTX reporta ${pulses} pulsos`,
-          raw: data,
-        };
-      } catch (err) {
-        return { flag: "N", message: `Error OTX: ${err.message}`, raw: null };
-      }
-    }
-
-    const [
-      googleRes,
-      vtRes,
-      sslRes,
-      whoisRes,
-      urlscanRes,
-      ipRepRes,
-      otxRes,
-    ] = await Promise.all([
-      googleCheck(url),
-      virusTotalCheck(url),
-      sslLabsCheck(domain),
-      whoisCheck(domain),
-      urlscanCheck(domain),
-      ipReputationCheck(url),
-      alienvaultCheck(domain),
+    const [g, vt, whois, urlscan, iprep, otx] = await Promise.all([
+      checkGoogle(url),
+      checkVirusTotal(url),
+      checkWhois(domain),
+      checkUrlScan(url),
+      checkIP(ip),
+      checkOTX(domain),
     ]);
 
-    results.googleSafeBrowsing = googleRes;
-    results.virusTotal = vtRes;
-    results.sslLabs = sslRes;
-    results.whois = whoisRes;
-    results.urlscan = urlscanRes;
-    results.ipReputation = ipRepRes;
-    results.domainReputation = otxRes;
-
-    /*Lo que suma cada API
-    Para el nivel de peligrosidad*/
-    const ponderaciones = {
-      googleSafeBrowsing: 3,
-      virusTotal: 3,
-      sslLabs: 1,
-      ipReputation: 2,
-      domainReputation: 2,
-      urlscan: 2,
-    };
-
-    for (const [key, val] of Object.entries(results)) {
-      if (val.flag === "F" && ponderaciones[key]) {
-        nivel += ponderaciones[key];
-      }
-    }
-
-    const anyF = Object.values(results).some(r => r?.flag === "F");
-    const summary = {
+    return jsonResponse({
       url,
       domain,
-      suspicious: anyF,
-      nivel,
-      note: "flag: 'V'=seguro, 'F'=inseguro, 'N'=error",
-    };
-
-    return jsonResponse({ summary, results });
+      results: {
+        google: g,
+        virusTotal: vt,
+        whois,
+        urlscan,
+        ipReputation: iprep,
+        otx,
+      },
+    });
   } catch (err) {
-    return jsonResponse({ error: "Error interno", detail: err.message }, 500);
+    return jsonResponse({ error: String(err) }, 500);
   }
 }
